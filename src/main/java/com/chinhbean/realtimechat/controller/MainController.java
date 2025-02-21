@@ -14,10 +14,10 @@ public class MainController {
     @RequestMapping("/")
     public String index(HttpServletRequest request, Model model) {
         String username = (String) request.getSession().getAttribute("username");
-
         if (username == null || username.isEmpty()) {
             return "redirect:/login";
         }
+        //Nếu đã đăng nhập, lấy username từ session, đưa vào model, và hiển thị trang chat.html.
         model.addAttribute("username", username);
 
         return "chat";
@@ -35,6 +35,7 @@ public class MainController {
         if (username.isEmpty()) {
             return "login";
         }
+        //Nếu hợp lệ → lưu username vào session và chuyển hướng đến /.
         request.getSession().setAttribute("username", username);
 
         return "redirect:/";
@@ -42,9 +43,16 @@ public class MainController {
 
     @RequestMapping(path = "/logout")
     public String logout(HttpServletRequest request) {
+
+        /*
+        * Xóa session, đăng xuất người dùng.
+        Chuyển hướng về trang đăng nhập /login.
+        */
         request.getSession(true).invalidate();
 
         return "redirect:/login";
     }
+
+
 
 }

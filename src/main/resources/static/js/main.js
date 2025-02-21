@@ -13,9 +13,13 @@ var username = null;
 function connect() {
     username = document.querySelector('#username').innerText.trim();
 
+    //Tạo kết nối WebSocket đến /ws bằng SockJS.
     var socket = new SockJS('/ws');
+
+    //Sau đó, nó sử dụng Stomp (Simple Text Oriented Messaging Protocol) để quản lý giao tiếp WebSocket.
     stompClient = Stomp.over(socket);
 
+    //Khi kết nối xong, gọi onConnected(). Nếu có lỗi, gọi onError().
     stompClient.connect({}, onConnected, onError);
 }
 
@@ -23,10 +27,11 @@ function connect() {
 connect();
 
 function onConnected() {
-    // Subscribe to the Public Topic
+    // Subscribe (đăng ký) vào topic công khai
+    //Đăng ký (subscribe) vào kênh /topic/publicChatRoom: Lắng nghe tin nhắn gửi đến từ server.
     stompClient.subscribe('/topic/publicChatRoom', onMessageReceived);
 
-    // Tell your username to the server
+    // Gửi thông báo "đã tham gia" đến server
     stompClient.send("/app/chat.addUser",
         {},
         JSON.stringify({sender: username, type: 'JOIN'})
@@ -41,7 +46,7 @@ function onError(error) {
     connectingElement.style.color = 'red';
 }
 
-
+//Gửi tin nhắn
 function sendMessage(event) {
     var messageContent = messageInput.value.trim();
     if(messageContent && stompClient) {
@@ -50,14 +55,18 @@ function sendMessage(event) {
             content: messageInput.value,
             type: 'CHAT'
         };
+
+        //Gửi tin nhắn đến /app/chat.sendMessage.
         stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
         messageInput.value = '';
     }
     event.preventDefault();
 }
 
-
+// Xử lý tin nhắn nhận được
 function onMessageReceived(payload) {
+
+    //Parse JSON tin nhắn nhận được từ WebSocket.
     var message = JSON.parse(payload.body);
 
     var messageElement = document.createElement('li');
