@@ -7,7 +7,15 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -106,6 +114,28 @@ public class WebSocketController {
             chatMessage.setStatus("online");
             chatMessage.setAvatarUrl("https://example.com/avatars/" + chatMessage.getSender() + ".png");
             messagingTemplate.convertAndSend("/room/" + roomId, chatMessage);
+        }
+    }
+    @PostMapping("/upload")
+    public String uploadFile(@RequestParam("file") MultipartFile file) {
+        try {
+            // Đường dẫn lưu file (ví dụ: trong thư mục static/images)
+            String uploadDir = "src/main/resources/static/images/";
+            File dir = new File(uploadDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            // Tạo tên file duy nhất
+            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+            Path filePath = Paths.get(uploadDir + fileName);
+            Files.write(filePath, file.getBytes());
+
+            // Trả về URL để truy cập file
+            return "/images/" + fileName;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return "";
         }
     }
 }

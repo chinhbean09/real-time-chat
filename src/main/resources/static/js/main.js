@@ -95,9 +95,19 @@ function uploadImage(file, callback) {
         method: 'POST',
         body: formData
     })
-        .then(response => response.text())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Upload failed with status: ' + response.status);
+            }
+            return response.text();
+        })
         .then(imageUrl => {
-            callback(imageUrl);
+            console.log('Uploaded image URL:', imageUrl); // Log để kiểm tra
+            if (imageUrl) {
+                callback(imageUrl);
+            } else {
+                console.error('No image URL returned from server');
+            }
         })
         .catch(error => {
             console.error('Error uploading image:', error);
@@ -159,7 +169,7 @@ function onRoomMessageReceived(payload) {
     var message = JSON.parse(payload.body);
     displayMessage(message, 'room');
     if (message.roomUsers) {
-        console.log("Received room users:", message.roomUsers); // Debug log
+        console.log("Received room users:", message.roomUsers);
         updateRoomUsers(message.roomUsers);
     }
 }
@@ -186,14 +196,26 @@ function displayMessage(message, type) {
 
     if (message.type === 'JOIN' || message.type === 'LEAVE') {
         messageElement.classList.add('event-message');
-        messageElement.textContent = message.content || (message.type === 'JOIN' ? message.sender + ' joined the room!' : message.sender + ' left the room!');
+        messageElement.textContent = message.content
+            || (message.type === 'JOIN'
+                ? message.sender + ' joined the room!'
+                : message.sender + ' left the room!');
     } else {
-        messageElement.classList.add(type === 'private' ? 'private-message' : type === 'room' ? 'room-message' : 'chat-message');
+        // Xác định class theo kiểu message: CHAT, PRIVATE, ROOM
+        messageElement.classList.add(
+            type === 'private' ? 'private-message'
+                : type === 'room' ? 'room-message'
+                    : 'chat-message'
+        );
+
+        // Nếu là người khác gửi (message.sender !== username) thì thêm class 'other'
         if (message.sender !== username) {
             messageElement.classList.add('other');
         }
 
         var contentWrapper = document.createElement('div');
+
+        // Hiển thị tên và trạng thái
         var usernameElement = document.createElement('strong');
         usernameElement.classList.add('nickname');
         usernameElement.textContent = message.sender;
@@ -201,19 +223,21 @@ function displayMessage(message, type) {
 
         var statusElement = document.createElement('span');
         statusElement.classList.add('status');
-        statusElement.textContent = '(' + message.status + ')';
+        statusElement.textContent = message.status ? (' (' + message.status + ')') : '';
         contentWrapper.appendChild(statusElement);
 
+        // Nhãn [Private] hoặc [Room: id] (nếu có)
         if (type === 'private') {
             var privateLabel = document.createElement('span');
-            privateLabel.textContent = '[Private] ';
+            privateLabel.textContent = ' [Private] ';
             contentWrapper.appendChild(privateLabel);
-        } else if (type === 'room') {
+        } else if (type === 'room' && currentRoomId) {
             var roomLabel = document.createElement('span');
-            roomLabel.textContent = '[Room: ' + currentRoomId + '] ';
+            roomLabel.textContent = ' [Room: ' + currentRoomId + '] ';
             contentWrapper.appendChild(roomLabel);
         }
 
+        // Nội dung tin nhắn
         if (message.content) {
             var textElement = document.createElement('span');
             textElement.classList.add('message-content');
@@ -221,6 +245,7 @@ function displayMessage(message, type) {
             contentWrapper.appendChild(textElement);
         }
 
+        // Nếu có ảnh
         if (message.imageUrl) {
             var imageElement = document.createElement('img');
             imageElement.src = message.imageUrl;
@@ -228,6 +253,7 @@ function displayMessage(message, type) {
             contentWrapper.appendChild(imageElement);
         }
 
+        // Thời gian
         var timestampElement = document.createElement('div');
         timestampElement.classList.add('timestamp');
         timestampElement.textContent = new Date().toLocaleTimeString();
@@ -239,10 +265,10 @@ function displayMessage(message, type) {
     messageArea.appendChild(messageElement);
     messageArea.scrollTo({ top: messageArea.scrollHeight, behavior: 'smooth' });
 
-    if (document.hidden && Notification.permission === "granted") {
+    // Nếu tab bị ẩn thì bật notification (nếu được cho phép)
+    if (document.hidden && Notification.permission === "granted" && message.type !== 'JOIN' && message.type !== 'LEAVE') {
         new Notification("New message from " + message.sender, {
-            body: message.content || "Sent an image",
-            icon: message.avatarUrl || 'https://example.com/avatars/default.png'
+            body: message.content || "Sent an image"
         });
     }
 }
