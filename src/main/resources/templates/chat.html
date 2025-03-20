@@ -1,40 +1,250 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Spring Boot WebSocket</title>
+    <title>Spring Boot WebSocket Chat</title>
     <link rel="stylesheet" th:href="@{/css/main.css}" />
-
-    <!-- https://cdnjs.com/libraries/sockjs-client -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.4/sockjs.min.js"></script>
-    <!-- https://cdnjs.com/libraries/stomp.js/ -->
-    <script  src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+        }
+        #chat-container {
+            max-width: 1000px;
+            margin: 20px auto;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            display: flex;
+            height: 600px;
+            overflow: hidden;
+        }
+        .chat-main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            background-color: #4a90e2;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top-left-radius: 10px;
+        }
+        .user-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .chat-header h3 {
+            margin: 0;
+            font-size: 1.2em;
+            font-weight: 500;
+        }
+        #messageArea {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            list-style: none;
+            margin: 0;
+            background-color: #fff;
+        }
+        .chat-message, .private-message, .room-message {
+            display: flex;
+            align-items: flex-start;
+            margin: 10px 0;
+            max-width: 70%;
+        }
+        .chat-message {
+            background-color: #6ab0ff;
+            color: white;
+            border-radius: 15px;
+            padding: 10px 15px;
+            margin-left: auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .private-message {
+            background-color: #fff3cd;
+            border-radius: 15px;
+            padding: 10px 15px;
+            margin-left: auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .room-message {
+            background-color: #6ab0ff;
+            color: white;
+            border-radius: 15px;
+            padding: 10px 15px;
+            margin-left: auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .chat-message.other, .private-message.other, .room-message.other {
+            background-color: #e9ecef;
+            color: black;
+            margin-left: 0;
+            margin-right: auto;
+        }
+        .event-message {
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            padding: 8px;
+            background-color: #f1f3f5;
+            border-radius: 10px;
+            margin: 10px auto;
+            max-width: 50%;
+            display: block;
+        }
+        .nickname {
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: inline; /* Đặt trên cùng hàng */
+            font-size: 0.9em;
+            color: white; /* Đặt màu trắng */
+        }
+        .status {
+            font-size: 0.8em;
+            margin-left: 5px;
+            opacity: 0.8;
+            display: inline; /* Đặt trên cùng hàng */
+            color: white; /* Đặt màu trắng */
+        }
+        .message-content {
+            word-break: break-word;
+            font-size: 1em;
+            color: white; /* Đặt màu trắng */
+        }
+        .message-image {
+            max-width: 200px;
+            border-radius: 10px;
+            margin-top: 5px;
+        }
+        .timestamp {
+            font-size: 0.7em;
+            color: #bbb;
+            margin-top: 5px;
+            text-align: right;
+        }
+        .input-message {
+            display: flex;
+            padding: 15px;
+            gap: 10px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #ddd;
+            border-bottom-left-radius: 10px;
+        }
+        #message, #recipient, #roomId {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+            font-size: 0.9em;
+            transition: border-color 0.3s;
+        }
+        #message:focus, #recipient:focus, #roomId:focus {
+            border-color: #4a90e2;
+        }
+        #imageInput {
+            padding: 5px;
+        }
+        #connecting.hidden {
+            display: none;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #357abd;
+        }
+        #leaveRoomButton {
+            display: none;
+            background-color: #dc3545;
+        }
+        #leaveRoomButton:hover {
+            background-color: #c82333;
+        }
+        .room-users {
+            width: 250px;
+            border-left: 1px solid #ddd;
+            padding: 20px;
+            background-color: #f0fff0;
+            border-top-right-radius: 10px;
+            border-bottom-right-radius: 10px;
+        }
+        .room-users h4 {
+            margin: 0 0 15px;
+            font-size: 1em;
+            color: #333;
+            font-weight: 600;
+        }
+        #roomUsersList {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .user-item {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .user-item span {
+            font-size: 0.9em;
+            color: #333;
+        }
+        .user-item .status {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
 </head>
 <body>
-<div id="chat-container">
-    <div class="chat-header">
-        <div class="user-container">
-            <span id="username" th:utext="${username}"></span>
-            <a th:href="@{/logout}">Logout</a>
+<div id="chat-container" th:if="${username != null}">
+    <div class="chat-main">
+        <div class="chat-header">
+            <div class="user-container">
+                <span id="username" th:utext="${username}"></span>
+                <span class="status">(online)</span>
+                <a th:href="@{/logout}" style="color: #fff; text-decoration: none; font-size: 0.9em;">Logout</a>
+            </div>
+            <h3>Spring WebSocket Chat Demo</h3>
         </div>
-        <h3>Spring WebSocket Chat Demo</h3>
-    </div>
-
-    <hr/>
-
-    <div id="connecting">Connecting...</div>
-    <ul id="messageArea">
-    </ul>
-    <form id="messageForm" name="messageForm">
+        <div id="connecting">Connecting...</div>
+        <ul id="messageArea"></ul>
         <div class="input-message">
-            <input type="text" id="message" autocomplete="off"
-                   placeholder="Type a message..."/>
-            <button type="submit">Send</button>
+            <input type="text" id="message" autocomplete="off" placeholder="Type a message..." />
+            <input type="text" id="recipient" placeholder="Recipient (leave blank for public)" />
+            <input type="text" id="roomId" placeholder="Enter Room ID to join" />
+            <input type="file" id="imageInput" accept="image/*" style="display: none;" />
+            <button type="button" id="uploadImageButton">📷</button>
+            <button type="button" id="createRoomButton">Create Private Room</button>
+            <button type="button" id="leaveRoomButton">Leave Room</button>
+            <button type="submit" form="messageForm">Send</button>
         </div>
-    </form>
+        <form id="messageForm" name="messageForm" style="display: none;"></form>
+    </div>
+    <div class="room-users">
+        <h4>Users in Room</h4>
+        <ul id="roomUsersList"></ul>
+    </div>
+</div>
+<div th:unless="${username != null}">
+    <p>Please <a href="/login">login</a> to access the chat.</p>
 </div>
 
 <script th:src="@{/js/main.js}"></script>
-
 </body>
 </html>

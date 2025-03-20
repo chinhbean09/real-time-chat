@@ -14,12 +14,14 @@ public class MainController {
     @RequestMapping("/")
     public String index(HttpServletRequest request, Model model) {
         String username = (String) request.getSession().getAttribute("username");
+
+        // Nếu không có username hoặc session hết hạn, xóa session và chuyển hướng về login
         if (username == null || username.isEmpty()) {
+            request.getSession().invalidate(); // Xóa session cũ
             return "redirect:/login";
         }
-        //Nếu đã đăng nhập, lấy username từ session, đưa vào model, và hiển thị trang chat.html.
-        model.addAttribute("username", username);
 
+        model.addAttribute("username", username);
         return "chat";
     }
 
@@ -35,21 +37,17 @@ public class MainController {
         if (username.isEmpty()) {
             return "login";
         }
-        //Nếu hợp lệ → lưu username vào session và chuyển hướng đến /.
-        request.getSession().setAttribute("username", username);
+
+        // Xóa session cũ trước khi tạo session mới
+        request.getSession().invalidate();
+        request.getSession(true).setAttribute("username", username);
 
         return "redirect:/";
     }
 
     @RequestMapping(path = "/logout")
     public String logout(HttpServletRequest request) {
-
-        /*
-        * Xóa session, đăng xuất người dùng.
-        Chuyển hướng về trang đăng nhập /login.
-        */
-        request.getSession(true).invalidate();
-
+        request.getSession().invalidate();
         return "redirect:/login";
     }
 

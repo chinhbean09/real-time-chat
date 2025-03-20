@@ -41,27 +41,16 @@ public class WebSocketEventListener {
 
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
-
-        //StompHeaderAccessor giúp lấy dữ liệu từ STOMP header của WebSocket.
-        //Nó giúp lấy session của client khi mất kết nối.
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-
-        //Khi client kết nối, username đã được lưu vào session từ Interceptor (HttpHandshakeInterceptor).
         String username = (String) headerAccessor.getSessionAttributes().get("username");
 
-        if(username != null) {
+        if (username != null) {
             logger.info("User Disconnected : " + username);
-
             ChatMessage chatMessage = new ChatMessage();
             chatMessage.setType(ChatMessage.MessageType.LEAVE);
-            //Gửi tin nhắn này để thông báo rằng người dùng đã rời khỏi phòng chat.
             chatMessage.setSender(username);
-
-            /*
-            Gửi tin nhắn thông báo đến mọi người trong phòng chat
-            Gửi tin nhắn đến topic /topic/publicChatRoom.
-            Tất cả client đang subscribed vào topic này sẽ nhận được thông báo.
-             */
+            chatMessage.setStatus("offline");
+            chatMessage.setAvatarUrl("https://example.com/avatars/" + username + ".png");
             messagingTemplate.convertAndSend("/topic/publicChatRoom", chatMessage);
         }
     }
