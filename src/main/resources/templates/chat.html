@@ -1,287 +1,271 @@
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <title>Spring Boot WebSocket Chat</title>
-    <link rel="stylesheet" th:href="@{/css/main.css}" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.4/sockjs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-    <style>
-        /* ======= Thiết lập cơ bản ======= */
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: #f0f2f5;
-            margin: 0;
-            padding: 0;
-        }
-        #chat-container {
-            max-width: 1000px;
-            margin: 20px auto;
-            border-radius: 10px;
-            background-color: #fff;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            display: flex;
-            height: 600px;
-            overflow: hidden;
-        }
+    <!DOCTYPE html>
+    <html xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <title>Spring Boot WebSocket Chat</title>
+        <link rel="stylesheet" th:href="@{/css/main.css}" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.4/sockjs.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+        <style>
+            /* ======= Thiết lập cơ bản ======= */
+            body {
+                font-family: 'Segoe UI', Arial, sans-serif;
+                background-color: #f0f2f5;
+                margin: 0;
+                padding: 0;
+            }
+            #chat-container {
+                max-width: 1000px;
+                margin: 20px auto;
+                border-radius: 10px;
+                background-color: #fff;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                display: flex;
+                height: 600px;
+                overflow: hidden;
+            }
 
-        /* ======= Khu vực chat chính ======= */
-        .chat-main {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        .chat-header {
-            background-color: #4a90e2;
-            color: white;
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-top-left-radius: 10px;
-        }
-        .user-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .chat-header h3 {
-            margin: 0;
-            font-size: 1.2em;
-            font-weight: 500;
-        }
-        #connecting {
-            text-align: center;
-            padding: 10px;
-            background-color: #fffae6;
-            border-bottom: 1px solid #ddd;
-        }
-        #connecting.hidden {
-            display: none;
-        }
+            /* ======= Khu vực chat chính ======= */
+            .chat-main {
+                flex-grow: 1;
+                display: flex;
+                flex-direction: column;
+            }
+            .chat-header {
+                background-color: #4a90e2;
+                color: white;
+                padding: 15px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-top-left-radius: 10px;
+            }
+            .user-container {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .chat-header h3 {
+                margin: 0;
+                font-size: 1.2em;
+                font-weight: 500;
+            }
+            #connecting {
+                text-align: center;
+                padding: 10px;
+                background-color: #fffae6;
+                border-bottom: 1px solid #ddd;
+            }
+            #connecting.hidden {
+                display: none;
+            }
 
-        /* ======= Danh sách tin nhắn ======= */
-        #messageArea {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 20px;
-            list-style: none;
-            margin: 0;
-            background-color: #fff;
-        }
+            /* ======= Danh sách tin nhắn ======= */
+            #messageArea {
+                flex-grow: 1;
+                overflow-y: auto;
+                padding: 20px;
+                list-style: none;
+                margin: 0;
+                background-color: #fff;
+            }
 
-        /*
-           Quy ước:
-           - Mặc định (chat-message / private-message / room-message): là tin nhắn của chính mình (bên phải)
-           - .other: tin nhắn của người khác (bên trái)
-        */
+            /* Mặc định: tin nhắn của chính mình (bên phải) */
+            .chat-message,
+            .private-message,
+            .room-message {
+                display: flex;
+                align-items: flex-start;
+                margin: 10px 0;
+                max-width: 70%;
+                background-color: #cce5ff; /* xanh nhạt */
+                color: #004085;
+                margin-left: auto;
+                margin-right: 0;
+                border-radius: 15px;
+                padding: 10px 15px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
 
-        /* Mặc định: tin nhắn của chính mình (bên phải) */
-        .chat-message,
-        .private-message,
-        .room-message {
-            display: flex;
-            align-items: flex-start;
-            margin: 10px 0;
-            max-width: 70%;
+            /* Tin nhắn của người khác (other) - nằm bên trái */
+            .chat-message.other,
+            .private-message.other,
+            .room-message.other {
+                background-color: #d4edda; /* xanh lá nhạt */
+                color: #155724;
+                margin-left: 0;
+                margin-right: auto;
+                border-radius: 15px;
+                padding: 10px 15px;
+                margin: 10px 0;
+                max-width: 70%;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
 
-            /* Màu nền cho tin nhắn của mình (bên phải) */
-            background-color: #cce5ff;  /* xanh nhạt */
-            color: #004085;
+            /* ======= Thông báo sự kiện (JOIN, LEAVE) ======= */
+            .event-message {
+                display: inline-block;
+                margin: 10px auto;
+                padding: 8px 16px;
+                text-align: center;
+                color: #666;
+                font-style: italic;
+                background-color: #f1f3f5;
+                border-radius: 10px;
+                max-width: 80%;
+            }
 
-            /* Cho nó sang phải */
-            margin-left: auto;
-            margin-right: 0;
+            /* ======= Chi tiết tin nhắn ======= */
+            .nickname {
+                font-weight: 600;
+                margin-bottom: 5px;
+                display: inline;
+                font-size: 0.9em;
+            }
+            .status {
+                font-size: 0.8em;
+                margin-left: 5px;
+                opacity: 0.8;
+                display: inline;
+            }
+            .message-content {
+                word-break: break-word;
+                font-size: 1em;
+                display: block;
+                margin-top: 4px;
+            }
+            .message-image {
+                max-width: 250px;
+                border-radius: 10px;
+                margin-top: 8px;
+                display: block;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+            .timestamp {
+                font-size: 0.7em;
+                color: #888;
+                margin-top: 5px;
+                text-align: right;
+            }
 
-            border-radius: 15px;
-            padding: 10px 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
+            /* ======= Phần nhập tin nhắn ======= */
+            .input-message {
+                display: flex;
+                padding: 15px;
+                gap: 10px;
+                background-color: #f8f9fa;
+                border-top: 1px solid #ddd;
+                border-bottom-left-radius: 10px;
+            }
+            #message, #recipient, #roomId {
+                flex-grow: 1;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 20px;
+                outline: none;
+                font-size: 0.9em;
+                transition: border-color 0.3s;
+            }
+            #message:focus, #recipient:focus, #roomId:focus {
+                border-color: #4a90e2;
+            }
+            #imageInput {
+                display: none; /* Ẩn trường chọn file */
+            }
+            button {
+                padding: 10px 15px;
+                background-color: #4a90e2;
+                color: white;
+                border: none;
+                border-radius: 20px;
+                cursor: pointer;
+                font-size: 0.9em;
+                transition: background-color 0.3s;
+            }
+            button:hover {
+                background-color: #357abd;
+            }
+            #uploadImageButton {
+                width: 40px;
+                text-align: center;
+                padding: 0;
+            }
+            #leaveRoomButton {
+                display: none;
+                background-color: #dc3545;
+            }
+            #leaveRoomButton:hover {
+                background-color: #c82333;
+            }
 
-        /* Tin nhắn của người khác (other) - nằm bên trái */
-        .chat-message.other,
-        .private-message.other,
-        .room-message.other {
-            background-color: #d4edda; /* xanh lá nhạt */
-            color: #155724;
-
-            /* Cho nó sang trái */
-            margin-left: 0;
-            margin-right: auto;
-
-            border-radius: 15px;
-            padding: 10px 15px;
-            margin: 10px 0;
-            max-width: 70%;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        /* ======= Thông báo sự kiện (JOIN, LEAVE) ======= */
-        .event-message {
-            /* Đặt block hiển thị dạng inline-block và canh giữa */
-            display: inline-block;
-            margin: 10px auto;
-            padding: 8px 16px;
-            text-align: center;
-
-            /* Màu sắc, font */
-            color: #666;
-            font-style: italic;
-            background-color: #f1f3f5;
-            border-radius: 10px;
-            max-width: 80%; /* Giới hạn độ rộng */
-        }
-
-        /* ======= Chi tiết tin nhắn ======= */
-        .nickname {
-            font-weight: 600;
-            margin-bottom: 5px;
-            display: inline;
-            font-size: 0.9em;
-        }
-        .status {
-            font-size: 0.8em;
-            margin-left: 5px;
-            opacity: 0.8;
-            display: inline;
-        }
-        .message-content {
-            word-break: break-word;
-            font-size: 1em;
-            display: block;
-            margin-top: 4px;
-        }
-        .message-image {
-            max-width: 200px;
-            border-radius: 10px;
-            margin-top: 5px;
-        }
-        .timestamp {
-            font-size: 0.7em;
-            color: #888;
-            margin-top: 5px;
-            text-align: right;
-        }
-
-        /* ======= Phần nhập tin nhắn ======= */
-        .input-message {
-            display: flex;
-            padding: 15px;
-            gap: 10px;
-            background-color: #f8f9fa;
-            border-top: 1px solid #ddd;
-            border-bottom-left-radius: 10px;
-        }
-        #message, #recipient, #roomId {
-            flex-grow: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            outline: none;
-            font-size: 0.9em;
-            transition: border-color 0.3s;
-        }
-        #message:focus, #recipient:focus, #roomId:focus {
-            border-color: #4a90e2;
-        }
-        #imageInput {
-            display: none;
-        }
-        button {
-            padding: 10px 15px;
-            background-color: #4a90e2;
-            color: white;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.9em;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #357abd;
-        }
-        #uploadImageButton {
-            width: 40px;
-            text-align: center;
-            padding: 0;
-        }
-        #leaveRoomButton {
-            display: none;
-            background-color: #dc3545;
-        }
-        #leaveRoomButton:hover {
-            background-color: #c82333;
-        }
-
-        /* ======= Danh sách người trong room ======= */
-        .room-users {
-            width: 250px;
-            border-left: 1px solid #ddd;
-            padding: 20px;
-            background-color: #f0fff0;
-            border-top-right-radius: 10px;
-            border-bottom-right-radius: 10px;
-        }
-        .room-users h4 {
-            margin: 0 0 15px;
-            font-size: 1em;
-            color: #333;
-            font-weight: 600;
-        }
-        #roomUsersList {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        .user-item {
-            padding: 8px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .user-item span {
-            font-size: 0.9em;
-            color: #333;
-        }
-        .user-item .status {
-            font-size: 0.8em;
-            color: #666;
-        }
-    </style>
-</head>
-<body>
-<div id="chat-container" th:if="${username != null}">
-    <div class="chat-main">
-        <div class="chat-header">
-            <div class="user-container">
-                <span id="username" th:utext="${username}"></span>
-                <span class="status">(online)</span>
-                <a th:href="@{/logout}" style="color: #fff; text-decoration: none; font-size: 0.9em;">Logout</a>
+            /* ======= Danh sách người trong room ======= */
+            .room-users {
+                width: 250px;
+                border-left: 1px solid #ddd;
+                padding: 20px;
+                background-color: #f0fff0;
+                border-top-right-radius: 10px;
+                border-bottom-right-radius: 10px;
+            }
+            .room-users h4 {
+                margin: 0 0 15px;
+                font-size: 1em;
+                color: #333;
+                font-weight: 600;
+            }
+            #roomUsersList {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }
+            .user-item {
+                padding: 8px 0;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .user-item span {
+                font-size: 0.9em;
+                color: #333;
+            }
+            .user-item .status {
+                font-size: 0.8em;
+                color: #666;
+            }
+        </style>
+    </head>
+    <body>
+    <div id="chat-container" th:if="${username != null}">
+        <div class="chat-main">
+            <div class="chat-header">
+                <div class="user-container">
+                    <span id="username" th:utext="${username}"></span>
+                    <span class="status">(online)</span>
+                    <a th:href="@{/logout}" style="color: #fff; text-decoration: none; font-size: 0.9em;">Logout</a>
+                </div>
+                <h3>Chat với người yêu</h3>
             </div>
-            <h3>Chat với người yêu</h3>
+            <div id="connecting">Connecting...</div>
+            <ul id="messageArea"></ul>
+            <div class="input-message">
+                <input type="text" id="message" autocomplete="off" placeholder="Type a message..." />
+                <input type="text" id="roomId" placeholder="Enter Room ID to join" />
+                <input type="file" id="imageInput" accept="image/*" />
+                <button type="button" id="uploadImageButton">📷</button>
+                <button type="button" id="createRoomButton">Private Room</button>
+                <button type="button" id="leaveRoomButton">Leave Room</button>
+                <button type="submit" form="messageForm">Send</button>
+            </div>
+            <form id="messageForm" name="messageForm" style="display: none;"></form>
         </div>
-        <div id="connecting">Connecting...</div>
-        <ul id="messageArea"></ul>
-        <div class="input-message">
-            <input type="text" id="message" autocomplete="off" placeholder="Type a message..." />
-<!--            <input type="text" id="recipient" placeholder="Recipient (leave blank for public)" />-->
-            <input type="text" id="roomId" placeholder="Enter Room ID to join" />
-            <input type="file" id="imageInput" accept="image/*" />
-            <button type="button" id="uploadImageButton">📷</button>
-            <button type="button" id="createRoomButton">Private Room</button>
-            <button type="button" id="leaveRoomButton">Leave Room</button>
-            <button type="submit" form="messageForm">Send</button>
+        <div class="room-users">
+            <h4>Users in Room</h4>
+            <ul id="roomUsersList"></ul>
         </div>
-        <form id="messageForm" name="messageForm" style="display: none;"></form>
     </div>
-    <div class="room-users">
-        <h4>Users in Room</h4>
-        <ul id="roomUsersList"></ul>
+    <div th:unless="${username != null}">
+        <p>Please <a href="/login">login</a> to access the chat.</p>
     </div>
-</div>
-<div th:unless="${username != null}">
-    <p>Please <a href="/login">login</a> to access the chat.</p>
-</div>
 
-<script th:src="@{/js/main.js}"></script>
-</body>
-</html>
+    <script th:src="@{/js/main.js}"></script>
+    </body>
+    </html>

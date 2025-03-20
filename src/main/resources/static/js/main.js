@@ -76,7 +76,6 @@ function sendChatMessage(messageContent, recipient, imageUrl) {
         roomId: currentRoomId,
         recipient: recipient
     };
-
     if (currentRoomId) {
         stompClient.send("/app/chat.sendRoomMessage", {}, JSON.stringify(chatMessage));
     } else if (recipient) {
@@ -102,7 +101,7 @@ function uploadImage(file, callback) {
             return response.text();
         })
         .then(imageUrl => {
-            console.log('Uploaded image URL:', imageUrl); // Log để kiểm tra
+            console.log('Uploaded image URL:', imageUrl);
             if (imageUrl) {
                 callback(imageUrl);
             } else {
@@ -113,7 +112,6 @@ function uploadImage(file, callback) {
             console.error('Error uploading image:', error);
         });
 }
-
 function createPrivateRoom() {
     if (stompClient) {
         stompClient.send("/app/chat.createPrivateRoom", {}, JSON.stringify({sender: username}));
@@ -147,6 +145,7 @@ function leaveRoom() {
 
 function onMessageReceived(payload) {
     var message = JSON.parse(payload.body);
+    console.log("Received message with imageUrl:", message.imageUrl);
     if (!currentRoomId) {
         displayMessage(message, 'public');
     }
@@ -201,21 +200,18 @@ function displayMessage(message, type) {
                 ? message.sender + ' joined the room!'
                 : message.sender + ' left the room!');
     } else {
-        // Xác định class theo kiểu message: CHAT, PRIVATE, ROOM
         messageElement.classList.add(
             type === 'private' ? 'private-message'
                 : type === 'room' ? 'room-message'
                     : 'chat-message'
         );
 
-        // Nếu là người khác gửi (message.sender !== username) thì thêm class 'other'
         if (message.sender !== username) {
             messageElement.classList.add('other');
         }
 
         var contentWrapper = document.createElement('div');
 
-        // Hiển thị tên và trạng thái
         var usernameElement = document.createElement('strong');
         usernameElement.classList.add('nickname');
         usernameElement.textContent = message.sender;
@@ -226,7 +222,6 @@ function displayMessage(message, type) {
         statusElement.textContent = message.status ? (' (' + message.status + ')') : '';
         contentWrapper.appendChild(statusElement);
 
-        // Nhãn [Private] hoặc [Room: id] (nếu có)
         if (type === 'private') {
             var privateLabel = document.createElement('span');
             privateLabel.textContent = ' [Private] ';
@@ -237,7 +232,6 @@ function displayMessage(message, type) {
             contentWrapper.appendChild(roomLabel);
         }
 
-        // Nội dung tin nhắn
         if (message.content) {
             var textElement = document.createElement('span');
             textElement.classList.add('message-content');
@@ -245,15 +239,23 @@ function displayMessage(message, type) {
             contentWrapper.appendChild(textElement);
         }
 
-        // Nếu có ảnh
         if (message.imageUrl) {
+            console.log('Displaying image with URL:', message.imageUrl);
             var imageElement = document.createElement('img');
             imageElement.src = message.imageUrl;
             imageElement.classList.add('message-image');
+            imageElement.onerror = () => {
+                console.error('Failed to load image:', message.imageUrl);
+                imageElement.style.display = 'none'; // Ẩn hình ảnh nếu không tải được
+                var errorText = document.createElement('span');
+                errorText.classList.add('message-content');
+                errorText.style.color = 'red';
+                errorText.textContent = '[Failed to load image]';
+                contentWrapper.appendChild(errorText);
+            };
             contentWrapper.appendChild(imageElement);
         }
 
-        // Thời gian
         var timestampElement = document.createElement('div');
         timestampElement.classList.add('timestamp');
         timestampElement.textContent = new Date().toLocaleTimeString();
@@ -265,13 +267,13 @@ function displayMessage(message, type) {
     messageArea.appendChild(messageElement);
     messageArea.scrollTo({ top: messageArea.scrollHeight, behavior: 'smooth' });
 
-    // Nếu tab bị ẩn thì bật notification (nếu được cho phép)
     if (document.hidden && Notification.permission === "granted" && message.type !== 'JOIN' && message.type !== 'LEAVE') {
         new Notification("New message from " + message.sender, {
             body: message.content || "Sent an image"
         });
     }
 }
+
 
 window.onload = function() {
     messageArea.innerHTML = '';
