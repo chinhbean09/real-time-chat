@@ -1,16 +1,73 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Login</title>
+    <title>Login - Spring WebSocket Chat</title>
     <link rel="stylesheet" href="/css/main.css" />
+    <style>
+        /* CSS nhúng trực tiếp, có thể tách ra file main.css */
+        #login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .title {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+            font-size: 0.9em;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
 </head>
 <body>
 <div id="login-container">
     <h1 class="title">Enter your username</h1>
     <form id="loginForm" name="loginForm" method="POST">
-        <input type="text" name="username" />
+        <input type="text" name="username" placeholder="Username" required />
         <button type="submit">Login</button>
     </form>
+    <div class="error" id="errorMessage">Please enter a valid username</div>
 </div>
+
+<script>
+    // Thêm validation cơ bản
+    document.getElementById('loginForm').addEventListener('submit', function(event) {
+        var username = document.querySelector('input[name="username"]').value.trim();
+        if (!username) {
+            event.preventDefault();
+            document.getElementById('errorMessage').style.display = 'block';
+        } else {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+    });
+</script>
 </body>
 </html>

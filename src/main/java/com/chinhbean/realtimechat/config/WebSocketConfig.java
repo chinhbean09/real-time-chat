@@ -37,7 +37,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         stompClient.send("/app/chat", {}, JSON.stringify({ message: "Hello" }));
         Khi đó, server sẽ nhận tin nhắn ở /app/chat và xử lý.
         */
-        registry.setApplicationDestinationPrefixes("/app");
+//        registry.setApplicationDestinationPrefixes("/app");
 
 
         /*
@@ -48,7 +48,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         Ví dụ: Khi server gửi tin nhắn đến tất cả client:
         messagingTemplate.convertAndSend("/topic/messages", "Hello, Clients!");
         */
-        registry.enableSimpleBroker("/topic");
+//        registry.enableSimpleBroker("/topic", "/private");
+        registry.setApplicationDestinationPrefixes("/app");
+        registry.enableSimpleBroker("/topic", "/queue", "/room"); // Thêm /room cho phòng riêng
+        registry.setUserDestinationPrefix("/user");
     }
 
 }
