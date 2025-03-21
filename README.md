@@ -1,7 +1,7 @@
-# Real-Time Chat Application 🚀 (https://roadmap.sh/projects/realtime-leaderboard-system)
+# Real-Time Chat Application 🚀
 
 A feature-rich real-time chat application leveraging WebSocket and HTTP protocols for seamless communication.
-
+(https://roadmap.sh/projects/realtime-leaderboard-system)
 ---
 
 ## 📡 API Endpoints
